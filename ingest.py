@@ -1,10 +1,12 @@
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
+from langchain_core.documents import Document
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from langchain_openai import OpenAIEmbeddings
+from uuid import uuid4
 import os
 
 load_dotenv()
@@ -19,13 +21,18 @@ collection_config = models.VectorParams(
     distance=models.Distance.COSINE
 )
 
-
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-large",
     # With the `text-embedding-3` class
     # of models, you can specify the size
     # of the embeddings you want returned.
     # dimensions=1024
+)
+
+vectorstore = QdrantVectorStore(
+    client=qdrant_client,
+    collection_name="nexus_docs",
+    embedding=embeddings,
 )
 
 def text_splitting():
@@ -43,8 +50,6 @@ def text_splitting():
     )
 
     texts = text_splitter.split_text(extracted_page)
-    #print(len(texts))
-    #print(texts[1])
     return texts
     
 def qdrant_create_collection(name: str):
@@ -59,20 +64,18 @@ def qdrant_get_collections():
     return
 
 def main():
-    '''
-    text=text_splitting()
+    #texts=text_splitting()
 
-    vectorstore = InMemoryVectorStore.from_texts(
-    text,
-    embedding=embeddings,
-    )
+    #docs = [Document(page_content=t) for t in texts]
+    #ids = [str(uuid4()) for _ in docs]
 
-    retriever = vectorstore.as_retriever()
-    retrieved_documents = retriever.invoke("operations by who?")
-    print(retrieved_documents[0].page_content)
+    #vectorstore.add_documents(documents=docs, ids=ids)
 
-    '''
-    qdrant_get_collections()
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 1})
+
+    docs = retriever.invoke("operations by who?")
+
+    print(docs[0].page_content)
 
 if __name__ == "__main__":
     main()
