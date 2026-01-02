@@ -5,6 +5,6 @@ TODO.md
 #directory
 .venv/
 tests/
+files/
 
-./test.pdf
 test.py

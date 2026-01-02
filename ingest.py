@@ -29,7 +29,7 @@ embeddings = OpenAIEmbeddings(
 )
 
 def text_splitting():
-    reader = PdfReader("test.pdf")
+    reader = PdfReader("./files/test.pdf")
     number_of_pages = len(reader.pages)
     page = reader.pages[0]
     text = page.extract_text
