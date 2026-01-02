@@ -1,2 +1,7 @@
-.venv/
+#solo files
+.env
 TODO.md
+
+#directory
+.venv/
+tests/
