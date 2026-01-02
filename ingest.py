@@ -3,6 +3,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.vectorstores import InMemoryVectorStore
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
+from qdrant_client.http import models
 from langchain_openai import OpenAIEmbeddings
 import os
 
@@ -12,6 +13,12 @@ qdrant_client = QdrantClient(
     url=os.getenv("QDRANT_ENDPOINT_URL"), 
     api_key=os.getenv("QDRANT_API_KEY"),
 )
+
+collection_config = models.VectorParams(
+    size=3072,
+    distance=models.Distance.COSINE
+)
+
 
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-large",
@@ -40,11 +47,19 @@ def text_splitting():
     #print(texts[1])
     return texts
     
-def qdrant_collections():
-    #print(qdrant_client.get_collections())
+def qdrant_create_collection(name: str):
+    qdrant_client.create_collection(
+        collection_name=name,
+        vectors_config=collection_config
+    )
+    return
+
+def qdrant_get_collections():
+    print(qdrant_client.get_collections())
     return
 
 def main():
+    '''
     text=text_splitting()
 
     vectorstore = InMemoryVectorStore.from_texts(
@@ -55,6 +70,9 @@ def main():
     retriever = vectorstore.as_retriever()
     retrieved_documents = retriever.invoke("operations by who?")
     print(retrieved_documents[0].page_content)
+
+    '''
+    qdrant_get_collections()
 
 if __name__ == "__main__":
     main()
