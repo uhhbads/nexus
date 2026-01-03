@@ -1,6 +1,7 @@
-from langchain_openai import ChatOpenAI
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_core.prompts import PromptTemplate
 from qdrant_client import QdrantClient
+from langchain_qdrant import QdrantVectorStore
 from dotenv import load_dotenv
 import os
 
@@ -17,40 +18,42 @@ embeddings = OpenAIEmbeddings(
 client = QdrantClient(
     url=os.getenv("QDRANT_ENDPOINT_URL"),
     api_key=os.getenv("QDRANT_API_KEY"),
-    check_compatibility=False  # REQUIRED for Qdrant Cloud
+)
+
+vectorstore = QdrantVectorStore(
+    client=client,
+    collection_name="nexus_docs",
+    embedding=embeddings,
+)
+
+prompt = PromptTemplate.from_template(
+    "Answer the question based only on the following context:\n\n{context}\n\nQuestion: {question}"
 )
 
 def retrieve_top3(query: str):
-    # Convert query to vector
-    query_vector = embeddings.embed_query(query)
+    docs = vectorstore.similarity_search(query, k=3)
+    return docs
 
-    # Search Qdrant
-    hits = client.http.search(
-        collection_name="nexus_docs",
-        query_vector=query_vector,
-        limit=3,
-        with_payload=True
-    )
-
-    results = []
-    for hit in hits:
-        results.append({
-            "score": hit.score,
-            "text": hit.payload.get("text", ""),
-            "metadata": hit.payload
-        })
-
-    return results
+def rag_chain(query: str):
+    docs = retrieve_top3(query)
+    
+    context = "\n\n".join([doc.page_content for doc in docs])
+    
+    formatted_prompt = prompt.format(context=context, question=query)
+    
+    response = model.invoke(formatted_prompt)
+    
+    return response.content
 
 def main():
-    query = input("Enter your query: ")
-    matches = retrieve_top3(query)
-
-    print("\nTop 3 Matches:\n")
-    for i, match in enumerate(matches, 1):
-        print(f"{i}. Score: {match['score']:.4f}")
-        print(match["text"])
-        print("-" * 60)
+    try:
+        while True:
+            query = input("Enter your query: ")
+            answer = rag_chain(query)
+            print("\nAnswer:")
+            print(answer)
+    except KeyboardInterrupt:
+        print("Exiting")
 
 if __name__ == "__main__":
     main()
